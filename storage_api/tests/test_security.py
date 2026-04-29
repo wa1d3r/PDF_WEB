@@ -1,4 +1,5 @@
 import pytest
+import socket
 from unittest.mock import patch
 from src.core.security import NetworkAccessControl
 
