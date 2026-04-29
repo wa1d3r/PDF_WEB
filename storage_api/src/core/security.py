@@ -1,3 +1,6 @@
+import hmac
+import hashlib
+
 class NetworkAccessControl:
     """Класс управления доступом на основе сетевых адресов и криптографических токенов.
 
@@ -26,7 +29,11 @@ class NetworkAccessControl:
         Returns:
             str: Токен в формате "<домен>.<подпись>"
         """
-        ...
+        if domain not in self._allowed_domains:
+            raise ValueError('Domain {domain} is not allowed')
+        
+        signature = self._sign_payload(domain)
+        return f"{domain}.{signature}"
     
     def verify_access(self, token: str, client_ip: str) -> bool:
         """Валидирует токен
@@ -51,5 +58,4 @@ class NetworkAccessControl:
         
         Returns:
             str: Шестнадцатиричная строка, представляющая вычисленную подпись."""
-        ...
-    
+        return hmac.new(self._secret, payload.encode('utf-8'), hashlib.sha256).hexdigest()
