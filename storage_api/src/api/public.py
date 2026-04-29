@@ -10,7 +10,7 @@ router = APIRouter(
 )
 
 @router.get(
-    '/asset/{asset_name}',
+    '/assets/{asset_name}',
     summary='Получить публичный ассет',
     description='Возвращает содержимое ассета с публичным доступом',
     response_model=DataResponse,

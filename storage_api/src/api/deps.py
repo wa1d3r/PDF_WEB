@@ -9,8 +9,8 @@ nac = NetworkAccessControl(
     allowed_domains=settings.ALLOWED_DOMAINS
 )
 
-service_token_shame = APIKeyHeader(
-    name='X-Servive-Token',
+service_token_schame = APIKeyHeader(
+    name='X-Service-Token',
     description='Токен доступа к сервису',
     auto_error=False
 )
@@ -18,15 +18,15 @@ service_token_shame = APIKeyHeader(
 async def verify_service_access(
         request: Request,
         x_service_token: Annotated[
-            str,
-            Depends(service_token_shame)
+            str | None,
+            Depends(service_token_schame)
         ]
 ) -> str:
     """Зависимость для защиты приватных эндпоинтов.
 
     Args:
         request (Request): Объект запроса FastAPI.
-        x_service_token (str): Токен, переданный в заголовке X-Service-Token.
+        x_service_token (str | None): Токен, переданный в заголовке X-Service-Token.
     
     Raises:
         HTTPException: Ошибка 401, если токен не прошел валидацию
@@ -34,6 +34,12 @@ async def verify_service_access(
     Returns:
         str: Валидированный токен сервиса
     """
+    if not x_service_token:
+        raise HTTPException(
+            status_code=401,
+            detail='Unauthorized. Missing X-Service-Token header.'
+        )
+
     client_ip = request.client.host if request.client else 'unknown'
 
     if not nac.verify_access(x_service_token, client_ip):

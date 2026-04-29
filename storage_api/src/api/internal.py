@@ -12,7 +12,7 @@ router = APIRouter(
 )
 
 @router.get(
-    'secrets/{secret_key}',
+    '/secrets/{secret_key}',
     response_model=DataResponse,
     summary='Получить приватный ассет',
     responses={
@@ -25,7 +25,7 @@ async def get_secret(
         str, 
         Path(
             description='идентификатор запрашиваемого секрета',
-            example='flag'
+            examples=['flag']
             )
         ],
     redis_client: Annotated[Redis, Depends(get_redis)]
