@@ -1,5 +1,6 @@
 from typing import Annotated
-from fastapi import Request, Header, HTTPException
+from fastapi import Request, HTTPException, Depends
+from fastapi.security import APIKeyHeader
 from src.core.security import NetworkAccessControl
 from src.core.config import settings
 
@@ -8,14 +9,17 @@ nac = NetworkAccessControl(
     allowed_domains=settings.ALLOWED_DOMAINS
 )
 
+service_token_shame = APIKeyHeader(
+    name='X-Servive-Token',
+    description='Токен доступа к сервису',
+    auto_error=False
+)
+
 async def verify_service_access(
         request: Request,
         x_service_token: Annotated[
             str,
-            Header(
-                alias="X-Service-Token",
-                description='Токен доступа в формате \'<домен>.<подпись>\''
-            )
+            Depends(service_token_shame)
         ]
 ) -> str:
     """Зависимость для защиты приватных эндпоинтов.

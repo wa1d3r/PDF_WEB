@@ -19,7 +19,7 @@ router = APIRouter(
     }
 )
 async def get_public_asset(
-    asset_name: Annotated[str, Path(description='Имя запрашиваемого ассета')],
+    asset_name: Annotated[str, Path(description='идентификатор запрашиваемого ассета')],
     redis_client: Annotated[Redis, Depends(get_redis)]
 ) -> DataResponse:
     """Обработчик получения публичных статических данных.
