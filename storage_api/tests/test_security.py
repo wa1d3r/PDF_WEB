@@ -48,7 +48,7 @@ def test_verify_empty_none_token(nac):
     assert nac.verify_access('', client_ip='172.18.0.5') is False
 
 @patch('socket.gethostbyname')
-def test_verify_unallowed_domain(nac):
+def test_verify_unallowed_domain(mock_dns, nac):
     domain_ip = '172.18.0.5'
     invalid_domain = 'invalid-domain'
 

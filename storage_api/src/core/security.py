@@ -1,5 +1,6 @@
 import hmac
 import hashlib
+import socket
 
 class NetworkAccessControl:
     """Класс управления доступом на основе сетевых адресов и криптографических токенов.
@@ -48,7 +49,26 @@ class NetworkAccessControl:
         Returns:
             bool: True, если токен валиден, иначе False.
         """
-        ...
+        if not token or '.' not in token:
+            return False
+        
+        claimbed_domain, signature = token.split('.', 1)
+
+        if claimbed_domain not in self._allowed_domains:
+            return False
+        
+        expected_signature = self._sign_payload(claimbed_domain)
+        if not hmac.compare_digest(expected_signature, signature):
+            return False
+        
+        try:
+            expected_ip = socket.gethostbyname(claimbed_domain)
+            if expected_ip != client_ip:
+                return False
+        except socket.gaierror:
+            return False
+        
+        return True
     
     def _sign_payload(self, payload: str) -> str:
         """Генерирует HMAC-SHA256 подпись для данных
