@@ -11,7 +11,8 @@ class NetworkAccessControl:
             master_secret (str): Ключ, используемый для генерации подписи.
             allowed_domains (list[str]): Список доменов, которым разрешен доступ к системе.
         """
-        ...
+        self._secret = master_secret.encode('utf-8')
+        self._allowed_domains: set[str] = set(allowed_domains)
     
     def generate_token(self, domain: str) -> str:
         """Генерирует криптографический токен, привязанный к указанному домену.
