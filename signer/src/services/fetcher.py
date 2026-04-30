@@ -16,7 +16,7 @@ class SignatureAssetFetcher:
         """Инициализация заголовками для внутренних запросов
         """
         self._secret_headers = { 'X-Service-Token': settings.SIGNER_TOKEN }
-        self._max_doc_size = self.MAX_DOCUMENT_SIZE
+        self._max_doc_size = settings.MAX_DOCUMENT_SIZE
     
     async def fetch(self, url: str, is_user_provided: bool = True) -> bytes:
         """Оркестратор процесса скачивания и обработки ассета.
