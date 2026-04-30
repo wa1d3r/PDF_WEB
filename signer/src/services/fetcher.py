@@ -9,8 +9,8 @@ from src.core.exceptions import (
     NetworkError
 )
 
-class SignatureTextFetcher:
-    """Класс для получения актуального текста для штампа подписи
+class SignatureAssetFetcher:
+    """Класс для получения актуального ассета для штампа подписи
     """
     def __init__(self):
         """Инициализация заголовками для внутренних запросов
@@ -18,18 +18,18 @@ class SignatureTextFetcher:
         self._secret_headers = { 'X-Service-Token': settings.SIGNER_TOKEN }
         self._max_doc_size = self.MAX_DOCUMENT_SIZE
     
-    async def fetch(self, url: str, is_user_provided: bool = True) -> str:
-        """Оркестратор процесса скачивания и обработки текста.
+    async def fetch(self, url: str, is_user_provided: bool = True) -> bytes:
+        """Оркестратор процесса скачивания и обработки ассета.
 
         Args:
-            url (str): URL адрес для загрузки текста.
+            url (str): URL адрес для загрузки ассета.
 
         Raises:
             InvalidPayloadError: Вызывается при несоответствии формату ответа (ожидается JSON).
             NetworkError: Сетевая ошибка при скачивании даных.
 
         Returns:
-            str: Декодированный текст
+            bytes: Декодированный ассет
         """
         if is_user_provided:
             self._check_waf_rules(url)
@@ -44,10 +44,10 @@ class SignatureTextFetcher:
                     except Exception:
                         raise InvalidPayloadError("Invalid response format: Expected JSON")
 
-                    text = self._decode_payload(resp_json)
-                    self._check_size_limits(text)
+                    asset_bytes = self._decode_payload(resp_json)
+                    self._check_size_limits(asset_bytes)
                     
-                    return text.strip()
+                    return asset_bytes
                     
         except aiohttp.ClientError as e:
             raise NetworkError(f"HTTP Request failed: {str(e)}")
@@ -64,7 +64,7 @@ class SignatureTextFetcher:
         if "/internal/" in url:
             raise SecurityError("WAFException: Cannot fetch from /internal/ paths.")
 
-    def _decode_payload(self, payload: dict[str, Any]) -> str:
+    def _decode_payload(self, payload: dict[str, Any]) -> bytes:
         """Извлекает и декодирует Base64 данные из JSON ответа.
 
         Args:
@@ -74,28 +74,27 @@ class SignatureTextFetcher:
             InvalidPayloadError: Если отсутствуют нужные ключи или Base64 поврежден.
 
         Returns:
-            str: Декодированная UTF-8 строка.
+            bytes: Декодированный объект.
         """
         encoded_data = payload.get("data")
         if not encoded_data:
             raise InvalidPayloadError("Invalid response format: Missing 'data' field")
             
         try:
-            decoded_bytes = base64.b64decode(encoded_data)
-            return decoded_bytes.decode('utf-8')
-        except Exception as e:
+            return base64.b64decode(encoded_data)
+        except Exception:
             raise InvalidPayloadError("Invalid base64 payload structure")
 
-    def _check_size_limits(self, text: str) -> None:
+    def _check_size_limits(self, asset: bytes) -> None:
         """Проверяет, не превышает ли текст установленные лимиты.
 
         Args:
-            text (str): Расшифрованный текст подписи.
+            asset (bytes): Расшифрованный текст подписи.
 
         Raises:
-            PayloadTooLargeError: Если текст превышает MAX_PAYLOAD_SIZE.
+            PayloadTooLargeError: Если размер ассета превышает self._max_doc_size.
         """
-        if len(text) > self._max_doc_size:
+        if len(asset) > self._max_doc_size:
             raise PayloadTooLargeError(
                 f"PayloadTooLarge: Response exceeds {self._max_doc_size} bytes limit"
             )
