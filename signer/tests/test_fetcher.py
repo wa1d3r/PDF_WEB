@@ -1,6 +1,6 @@
 import pytest
 import base64
-from aiohttp import web
+from aiohttp import web, ClientError
 from aioresponses import aioresponses
 
 from src.services.fetcher import SignatureAssetFetcher
@@ -72,4 +72,69 @@ async def test_ssrf_token_leak_via_redirect(fetcher: SignatureAssetFetcher):
     finally:
         await runner.cleanup()
 
+@pytest.mark.asyncio
+async def test_fetch_end_decode_public(fetcher: SignatureAssetFetcher):
+    url = 'http://storage/public/public-data'
+    expected_bytes = b'public_data'
+    b64_payload = base64.b64encode(expected_bytes).decode('utf-8')
 
+    with aioresponses() as m:
+        m.get(url, status=200, payload={'data': b64_payload})
+        result = await fetcher.fetch(url)
+        assert result == expected_bytes
+
+@pytest.mark.asyncio
+async def test_payload_to_large(fetcher: SignatureAssetFetcher):
+    url = 'http://storage/public/public-data'
+    large_bytes = b'A' * (settings.MAX_DOCUMENT_SIZE + 1)
+    b64_payload = base64.b64encode(large_bytes).decode('utf-8')
+
+    with aioresponses() as m:
+        m.get(url, status=200, payload={'data': b64_payload})
+        with pytest.raises(PayloadTooLargeError, match='Response exceeds'):
+            await fetcher.fetch(url)
+
+@pytest.mark.asyncio
+async def test_invalid_json_format(fetcher: SignatureAssetFetcher):
+    url = 'http://storage/public/public-data'
+
+    with aioresponses() as m:
+        m.get(url, status=200, payload='invalid')
+        with pytest.raises(InvalidPayloadError, match='Expected JSON'):
+            await fetcher.fetch(url)
+
+@pytest.mark.asyncio
+async def test_invalid_json_format(fetcher: SignatureAssetFetcher):
+    url = 'http://storage/public/public-data'
+
+    with aioresponses() as m:
+        m.get(url, status=200, payload={'wrong': 'value'})
+        with pytest.raises(InvalidPayloadError, match='Missing \'data\' field'):
+            await fetcher.fetch(url)
+
+@pytest.mark.asyncio
+async def test_invalid_json_format(fetcher: SignatureAssetFetcher):
+    url = 'http://storage/public/public-data'
+
+    with aioresponses() as m:
+        m.get(url, status=200, payload={'data': 'value'})
+        with pytest.raises(InvalidPayloadError, match='Invalid base64 payload'):
+            await fetcher.fetch(url)
+
+@pytest.mark.asyncio
+async def test_network_connection_error(fetcher: SignatureAssetFetcher):
+    url = 'http://storage/public/public-data'
+
+    with aioresponses() as m:
+        m.get(url, exception=ClientError())
+        with pytest.raises(NetworkError):
+            await fetcher.fetch(url)
+
+@pytest.mark.asyncio
+async def test_http_status_error(fetcher: SignatureAssetFetcher):
+    url = 'http://storage/public/public-data'
+
+    with aioresponses() as m:
+        m.get(url, exception=ClientError())
+        with pytest.raises(NetworkError):
+            await fetcher.fetch(url)
