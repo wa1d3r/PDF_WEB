@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "Signature API"
     SIGNER_TOKEN: str = "token"
     MAX_DOCUMENT_SIZE: int = 50 * 1024
+    PRIVATE_KEY_URL: str = 'http://172.17.0.5'
+    PRIVATE_KEY_PASSWORD: str = 'password'
 
     model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8')
 
