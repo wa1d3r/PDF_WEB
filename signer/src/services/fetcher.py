@@ -15,10 +15,10 @@ class SignatureTextFetcher:
     def __init__(self):
         """Инициализация заголовками для внутренних запросов
         """
-        self._headers = { 'X-Service-Token': settings.SIGNER_TOKEN }
+        self._secret_headers = { 'X-Service-Token': settings.SIGNER_TOKEN }
         self._max_doc_size = self.MAX_DOCUMENT_SIZE
     
-    async def fetch(self, url: str) -> str:
+    async def fetch(self, url: str, is_user_provided: bool = True) -> str:
         """Оркестратор процесса скачивания и обработки текста.
 
         Args:
@@ -31,10 +31,11 @@ class SignatureTextFetcher:
         Returns:
             str: Декодированный текст
         """
-        self._check_waf_rules(url)
+        if is_user_provided:
+            self._check_waf_rules(url)
 
         try:
-            async with aiohttp.ClientSession(headers=self.headers) as session:
+            async with aiohttp.ClientSession(headers=self._secret_headers) as session:
                 async with session.get(url, timeout=5) as response:
                     response.raise_for_status()
                     
