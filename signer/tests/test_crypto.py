@@ -8,6 +8,11 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import serialization
 from cryptography.x509.oid import NameOID
 import cryptography.x509 as x509
+from asn1crypto import x509 as asn1_x509
+from pyhanko.pdf_utils.reader import PdfFileReader
+from pyhanko.sign.validation import async_validate_pdf_signature
+from pyhanko_certvalidator import ValidationContext
+from cryptography.hazmat.primitives.serialization import pkcs12
 
 from src.services.crypto import PDFCryptoSigner
 
@@ -93,7 +98,7 @@ async def test_apply_signature_success(
     dummy_image_bytes: bytes, 
     crypto_credentials: dict
 ):
-    signature_text = "TEST SIGNATURE STAMP"
+    signature_text = "test stamp"
     
     signed_pdf = await crypto_signer.apply_signature(
         document_bytes=valid_pdf_bytes,
@@ -104,8 +109,27 @@ async def test_apply_signature_success(
     )
     
     assert isinstance(signed_pdf, bytes)
-    assert len(signed_pdf) > len(valid_pdf_bytes)
-    assert b"PlatformSignature" in signed_pdf
+    assert signature_text.encode('utf-8') in signed_pdf
+    
+    _, cert, _ = pkcs12.load_key_and_certificates(
+        crypto_credentials["p12_bytes"],
+        crypto_credentials["password"].encode('utf-8')
+    )
+    
+    cert_der = cert.public_bytes(serialization.Encoding.DER)
+    asn1_cert = asn1_x509.Certificate.load(cert_der)
+    
+    vc = ValidationContext(trust_roots=[asn1_cert])
+    
+    reader = PdfFileReader(io.BytesIO(signed_pdf))
+    assert len(reader.embedded_signatures) == 1
+    sig_obj = reader.embedded_signatures[0]
+    
+    status = await async_validate_pdf_signature(sig_obj, signer_validation_context=vc)
+    
+    assert status.valid is True, "Криптографическая подпись недействительна!"
+    assert status.intact is True, "Целостность PDF документа нарушена!"
+    assert status.signing_cert.dump() == asn1_cert.dump()
 
 
 @pytest.mark.asyncio
