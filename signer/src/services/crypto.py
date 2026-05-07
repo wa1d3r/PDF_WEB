@@ -5,7 +5,6 @@ from pyhanko import stamp
 from pyhanko.pdf_utils import images, text
 from pyhanko.pdf_utils.incremental_writer import IncrementalPdfFileWriter
 from pyhanko.sign import signers, fields
-from oscrypto import keys
 
 class PDFCryptoSigner:
     """Сервис наложения визуального штампа и ЭЦП с использованием pyHanko.
@@ -29,23 +28,19 @@ class PDFCryptoSigner:
 
         if cert_hash in self._signer_cache:
             return self._signer_cache[cert_hash]
-        
-        try:
-            private_key, certificate, additional_certificates = keys.parse_pkcs12(
-                pkcs12_bytes, password.encode('utf-8')
-            )
 
-            signer = signers.SimpleSigner(
-                signing_cert=certificate,
-                signing_key=private_key,
-                cert_registry=additional_certificates
+        try:
+            signer = signers.SimpleSigner.load_pkcs12_data(
+                pkcs12_bytes,
+                other_certs=None,
+                passphrase=password.encode('utf-8')
             )
 
             self._signer_cache[cert_hash] = signer
             return signer
-        
+            
         except Exception as e:
-            raise ValueError('Invalid PKCS#12 container or wrong password')
+            raise ValueError("Invalid PKCS#12 container or wrong password")
     
     async def apply_signature(
             self,
