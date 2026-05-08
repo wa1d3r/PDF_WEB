@@ -1,5 +1,8 @@
 import aiohttp
 import base64
+import posixpath
+import re
+import urllib
 from typing import Any
 from src.core.config import settings
 from src.core.exceptions import (
@@ -12,6 +15,9 @@ from src.core.exceptions import (
 class SignatureAssetFetcher:
     """Класс для получения актуального ассета для штампа подписи
     """
+
+    _INTERNAL_REGEX = re.compile(r'(?:^|/)internal(?:/|$)', re.IGNORECASE)
+
     def __init__(self):
         """Инициализация заголовками для внутренних запросов
         """
@@ -61,8 +67,36 @@ class SignatureAssetFetcher:
         Raises:
             SecurityBlockError: Если URL содержит запрещенные пути.
         """
-        if "/internal/" in url:
-            raise SecurityError("WAFException: Cannot fetch from /internal/ paths.")
+        try:
+            parsed = urllib.parse.urlparse(url)
+        except Exception:
+            raise SecurityError("WAF: Malformed URL structure.")
+
+        if parsed.scheme not in ("http", "https"):
+            raise SecurityError("WAF: Only HTTP/HTTPS schemes are allowed.")
+
+        path = parsed.path
+        decode_count = 0
+        while '%' in path and decode_count < 3:
+            new_path = urllib.parse.unquote(path)
+            if new_path == path:
+                break
+            path = new_path
+            decode_count += 1
+            
+        if decode_count >= 3:
+            raise SecurityError("WAF: URL is over-encoded.")
+
+        normalized_path = posixpath.normpath(path.replace('\\', '/'))
+
+        if not normalized_path.isascii():
+            raise SecurityError("WAF: Non-ASCII characters are not allowed in URLs.")
+
+        if ';' in normalized_path:
+            raise SecurityError("WAF: Matrix parameters are not allowed.")
+
+        if self._INTERNAL_REGEX.search(normalized_path):
+            raise SecurityError("WAF: Cannot fetch from this path.")
 
     def _decode_payload(self, payload: dict[str, Any]) -> bytes:
         """Извлекает и декодирует Base64 данные из JSON ответа.
