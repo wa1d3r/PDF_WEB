@@ -1,6 +1,6 @@
 from fastapi import FastAPI
-from src.core.config import settings
-from src.api import generate
+from pdf_gen.src.core.config import settings
+from pdf_gen.src.api import generate
 
 app = FastAPI(title=settings.PROJECT_NAME)
 
