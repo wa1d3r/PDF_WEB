@@ -1,0 +1,3 @@
+class NetworkError(Exception):
+    """Выбрасывается при сетевых ошибках"""
+    ...
