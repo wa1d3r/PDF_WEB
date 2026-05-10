@@ -1,6 +1,6 @@
 import httpx
 import base64
-from fastapi import HTTPException
+from src.core.exceptions import NetworkError
 from src.core.config import settings
 
 class StorageClient:
@@ -8,6 +8,19 @@ class StorageClient:
     """
 
     async def get_html_template(self, template_name: str) -> str:
+        """_summary_
+
+        Args:
+            template_name (str): _description_
+
+        Raises:
+            ValueError: _description_
+            HTTPException: _description_
+            HTTPException: _description_
+
+        Returns:
+            str: _description_
+        """
         url = f'{settings.STORAGE_API_URL}/public/assets/{template_name}'
 
         try:
@@ -22,7 +35,7 @@ class StorageClient:
                 return base64.b64decode(b64_data).decode('utf-8')
             
         except httpx.HTTPError as e:
-            raise HTTPException(status_code=500, detail='UI assets unavailable')
+            raise NetworkError('UI assets unavailable')
 
         except Exception as e:
-            raise HTTPException(status_code=500, detail='UI assets corrupted')
+            raise ValueError('UI assets corrupted')

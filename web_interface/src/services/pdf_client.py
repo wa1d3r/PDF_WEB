@@ -1,6 +1,6 @@
 import httpx
 import base64
-from fastapi import HTTPException
+from src.core.exceptions import NetworkError
 from src.core.config import settings
 
 class PDFGeneratorClient:
@@ -22,7 +22,7 @@ class PDFGeneratorClient:
                 return base64.b64decode(b64_data)
         
         except httpx.HTTPError as e:
-            raise HTTPException(status_code=500, detail=f'Generator connection failed: {str(e)}')
+            raise NetworkError(f'Generator connection failed: {str(e)}')
 
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f'runtime error: {str(e)}')
+            raise RuntimeError(f'runtime error: {str(e)}')
