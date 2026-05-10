@@ -8,18 +8,18 @@ class StorageClient:
     """
 
     async def get_html_template(self, template_name: str) -> str:
-        """_summary_
+        """Скичивает публичный шаблон
 
         Args:
-            template_name (str): _description_
+            template_name (str): Имя шаблона
 
         Raises:
-            ValueError: _description_
-            HTTPException: _description_
-            HTTPException: _description_
+            ValueError: Пустой шаблон
+            NetworkError: Ошибка на стороне хранилдища или шаблон не найден
+            RuntimeError: Ошибка в процессе декодирования шаблона
 
         Returns:
-            str: _description_
+            str: Декодированная строка шаблона
         """
         url = f'{settings.STORAGE_API_URL}/public/assets/{template_name}'
 
@@ -38,4 +38,4 @@ class StorageClient:
             raise NetworkError('UI assets unavailable')
 
         except Exception as e:
-            raise ValueError('UI assets corrupted')
+            raise RuntimeError('UI assets corrupted')

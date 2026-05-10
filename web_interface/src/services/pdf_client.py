@@ -1,6 +1,6 @@
 import httpx
 import base64
-from src.core.exceptions import NetworkError
+from src.core.exceptions import NetworkError, ServiceError
 from src.core.config import settings
 
 class PDFGeneratorClient:
@@ -8,6 +8,19 @@ class PDFGeneratorClient:
     """
 
     async def generate_pdf(self, payload: dict) -> bytes:
+        """Отправка данных пользователя в сервис генерации
+
+        Args:
+            payload (dict): Пользовательские данные
+
+        Raises:
+            ServiceError: Ошибк на стороне генератора
+            NetworkError: Ошибка соединения с генератором
+            RuntimeError: Ошибка при обработке ответа от генератора
+
+        Returns:
+            bytes: Бинарный PDF файл
+        """
         url = f'{settings.PDF_GEN_API_URL}/api/v1/generate'
 
         try:
@@ -16,7 +29,7 @@ class PDFGeneratorClient:
 
                 if response.status_code != 200:
                     error_detail = response.json().get('detail', 'runtime error')
-                    raise RuntimeError(error_detail)
+                    raise ServiceError(error_detail)
                 
                 b64_data = response.json().get('pdf_base64', '')
                 return base64.b64decode(b64_data)
