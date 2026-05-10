@@ -18,7 +18,7 @@ PDFDep = Annotated[PDFGeneratorClient, Depends()]
 @router.get("/", response_class=HTMLResponse)
 async def index(storage: StorageDep):
     template_str = await storage.get_template("web_index.html")
-    rendered_html = engine.render(template_str, {})
+    rendered_html = engine.render_from_string(template_str, {})
     return HTMLResponse(content=rendered_html)
 
 @router.post("/api/preview", response_class=HTMLResponse)
@@ -31,7 +31,7 @@ async def preview_report(
         data = await ctfd.fetch_user_data(body.token)
         template_str = await storage.get_template("web_dashboard.html")
         
-        rendered_html = engine.render(template_str, {"data": data})
+        rendered_html = engine.render_from_string(template_str, {"data": data})
         return HTMLResponse(content=rendered_html)
         
     except ValueError as e:

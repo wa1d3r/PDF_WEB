@@ -7,7 +7,7 @@ class StorageClient:
     """Получение статической разметки и шаблонов из хранилища
     """
 
-    async def get_html_template(self, template_name: str) -> str:
+    async def get_template(self, template_name: str) -> str:
         """Скичивает публичный шаблон
 
         Args:

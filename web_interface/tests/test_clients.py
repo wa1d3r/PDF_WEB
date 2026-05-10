@@ -21,7 +21,7 @@ async def test_storage_client_success():
     mock_resp.raise_for_status = MagicMock()
 
     with patch("httpx.AsyncClient.get", return_value=mock_resp):
-        result = await client.get_html_template("test.html") 
+        result = await client.get_template("test.html") 
         assert result == template_html
 
 @pytest.mark.asyncio
@@ -33,14 +33,14 @@ async def test_storage_client_empty_data():
 
     with patch("httpx.AsyncClient.get", return_value=mock_resp):
         with pytest.raises(RuntimeError, match="UI assets corrupted"):
-            await client.get_html_template("test.html")
+            await client.get_template("test.html")
 
 @pytest.mark.asyncio
 async def test_storage_client_network_error():
     client = StorageClient()
     with patch("httpx.AsyncClient.get", side_effect=httpx.RequestError("Timeout")):
         with pytest.raises(NetworkError, match="UI assets unavailable"):
-            await client.get_html_template("test.html")
+            await client.get_template("test.html")
 
 @pytest.mark.asyncio
 async def test_ctfd_client_success():
