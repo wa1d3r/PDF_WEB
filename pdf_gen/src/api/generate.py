@@ -1,8 +1,8 @@
 from typing import Annotated
 from fastapi import APIRouter, HTTPException, Depends
-from pdf_gen.src.api.schemas import CTFdReportData, GenerateResponse
-from pdf_gen.src.services.renderer import PDFGeneratorService
-from pdf_gen.src.services.clients import StorageClient, SignerClient
+from src.api.schemas import CTFdReportData, GenerateResponse
+from src.services.renderer import PDFGeneratorService
+from src.services.clients import StorageClient, SignerClient
 
 router = APIRouter(prefix="/api/v1", tags=["Generator"])
 

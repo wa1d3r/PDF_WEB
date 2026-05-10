@@ -1,7 +1,7 @@
 import httpx
 import base64
-from pdf_gen.src.core.config import settings
-from pdf_gen.src.core.exceptions import NetworkError
+from src.core.config import settings
+from src.core.exceptions import NetworkError
 
 class StorageClient:
     """Клиент для получения публичных ассетов из Storage API."""

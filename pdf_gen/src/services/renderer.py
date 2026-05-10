@@ -2,9 +2,8 @@ import sys
 import base64
 from jinja2 import Environment
 from weasyprint import HTML
-
-from pdf_gen.src.api.schemas import CTFdReportData
-from pdf_gen.src.services.clients import StorageClient, SignerClient
+from src.api.schemas import CTFdReportData
+from src.services.clients import StorageClient, SignerClient
 
 sys.setrecursionlimit(10000)
 
