@@ -1,10 +1,9 @@
 import pytest
 import base64
 from unittest.mock import AsyncMock, call
-from fastapi import FastAPI
 from httpx import AsyncClient, ASGITransport
 
-from src.api.sign import router
+from src.main import app
 from src.services.fetcher import SignatureAssetFetcher
 from src.services.crypto import PDFCryptoSigner
 from src.core.config import settings
@@ -14,9 +13,6 @@ from src.core.exceptions import (
     PayloadTooLargeError,
     NetworkError
 )
-
-app = FastAPI()
-app.include_router(router=router)
 
 @pytest.fixture
 def mock_fetcher():
@@ -43,6 +39,13 @@ def valid_payload():
         "text_url": "http://storage/text.txt",
         "img_url": "http://storage/image.png"
     }
+
+@pytest.mark.asyncio
+async def test_health_check(client):
+    response = await client.get('/health')
+
+    assert response.status_code == 200
+    assert response.json() == {'status' : 'ok'}
 
 @pytest.mark.asyncio
 async def test_sign_success(client, mock_fetcher, mock_crypto, valid_payload):
