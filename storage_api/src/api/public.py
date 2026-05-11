@@ -1,7 +1,6 @@
 from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Path
-from redis.asyncio import Redis
-from src.db.redis import get_redis
+from src.db.json_storage import get_storage
 from src.api.schemas import DataResponse
 
 router = APIRouter(
@@ -20,12 +19,12 @@ router = APIRouter(
 )
 async def get_public_asset(
     asset_name: Annotated[str, Path(description='идентификатор запрашиваемого ассета')],
-    redis_client: Annotated[Redis, Depends(get_redis)]
+    storage: Annotated[dict, Depends(get_storage)]
 ) -> DataResponse:
     """Обработчик получения публичных статических данных.
 
     Args:
-        redis_client (Redis): Клиент базы данных.
+        storage (dict): Словарь ассетов.
         asset_name (str): Имя ассета.
 
     Raises:
@@ -34,7 +33,7 @@ async def get_public_asset(
     Returns:
         DataResponse: Модель с данными асета.
     """
-    data = await redis_client.get(f'asset:{asset_name}')
+    data = storage.get('public', {}).get(asset_name)
 
     if not data:
         raise HTTPException(status_code=404, detail='asset not found')
