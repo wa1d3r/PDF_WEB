@@ -1,5 +1,6 @@
 import aiohttp
 import base64
+import logging
 import posixpath
 import re
 import urllib
@@ -11,6 +12,8 @@ from src.core.exceptions import (
     PayloadTooLargeError,
     NetworkError
 )
+
+logger = logging.getLogger(__name__)
 
 class SignatureAssetFetcher:
     """Класс для получения актуального ассета для штампа подписи
@@ -40,6 +43,8 @@ class SignatureAssetFetcher:
         if is_user_provided:
             self._check_waf_rules(url)
 
+        logger.info(f"Fetching asset from URL: {url}")
+
         try:
             async with aiohttp.ClientSession(headers=self._secret_headers) as session:
                 async with session.get(url, timeout=5) as response:
@@ -48,14 +53,17 @@ class SignatureAssetFetcher:
                     try:
                         resp_json = await response.json()
                     except Exception:
+                        logger.error(f"Fetch failed for {url}: Expected JSON response.")
                         raise InvalidPayloadError("Invalid response format: Expected JSON")
 
                     asset_bytes = self._decode_payload(resp_json)
                     self._check_size_limits(asset_bytes)
                     
+                    logger.info(f"Successfully fetched and decoded {len(asset_bytes)} bytes from {url}")
                     return asset_bytes
                     
         except aiohttp.ClientError as e:
+            logger.error(f"Network error while fetching {url}: {e}")
             raise NetworkError(f"HTTP Request failed: {str(e)}")
 
     def _check_waf_rules(self, url: str) -> None:
@@ -70,9 +78,11 @@ class SignatureAssetFetcher:
         try:
             parsed = urllib.parse.urlparse(url)
         except Exception:
+            logger.warning(f"WAF Blocked: Malformed URL structure: {url}")
             raise SecurityError("WAF: Malformed URL structure.")
 
         if parsed.scheme not in ("http", "https"):
+            logger.warning(f"WAF Blocked: Invalid scheme '{parsed.scheme}' in {url}")
             raise SecurityError("WAF: Only HTTP/HTTPS schemes are allowed.")
 
         path = parsed.path
@@ -85,17 +95,21 @@ class SignatureAssetFetcher:
             decode_count += 1
             
         if decode_count >= 3:
+            logger.warning(f"WAF Blocked: URL is over-encoded: {url}")
             raise SecurityError("WAF: URL is over-encoded.")
 
         normalized_path = posixpath.normpath(path.replace('\\', '/'))
 
         if not normalized_path.isascii():
+            logger.warning(f"WAF Blocked: Non-ASCII characters detected: {url}")
             raise SecurityError("WAF: Non-ASCII characters are not allowed in URLs.")
 
         if ';' in normalized_path:
+            logger.warning(f"WAF Blocked: Matrix parameters detected: {url}")
             raise SecurityError("WAF: Matrix parameters are not allowed.")
 
         if self._INTERNAL_REGEX.search(normalized_path):
+            logger.warning(f"WAF Blocked: Attempt to access internal path: {url}")
             raise SecurityError("WAF: Cannot fetch from this path.")
 
     def _decode_payload(self, payload: dict[str, Any]) -> bytes:
@@ -112,11 +126,13 @@ class SignatureAssetFetcher:
         """
         encoded_data = payload.get("data")
         if not encoded_data:
+            logger.warning("Invalid response format: Missing 'data' field")
             raise InvalidPayloadError("Invalid response format: Missing 'data' field")
             
         try:
             return base64.b64decode(encoded_data)
         except Exception:
+            logger.warning("Invalid base64 payload structure")
             raise InvalidPayloadError("Invalid base64 payload structure")
 
     def _check_size_limits(self, asset: bytes) -> None:
@@ -129,6 +145,7 @@ class SignatureAssetFetcher:
             PayloadTooLargeError: Если размер ассета превышает self._max_doc_size.
         """
         if len(asset) > self._max_doc_size:
+            logger.warning(f"Fetch rejected: Asset size ({len(asset)} bytes) exceeds limit ({self._max_doc_size} bytes).")
             raise PayloadTooLargeError(
                 f"PayloadTooLarge: Response exceeds {self._max_doc_size} bytes limit"
             )
