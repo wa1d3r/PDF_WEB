@@ -28,7 +28,7 @@ async def get_public_asset(
         asset_name (str): Имя ассета.
 
     Raises:
-        HTTPException: 404, если ключ не найден в Redis.
+        HTTPException: 404, если ключ не найден в словаре.
 
     Returns:
         DataResponse: Модель с данными асета.
