@@ -1,10 +1,13 @@
 import io
 import hashlib
+import logging
 from PIL import Image
 from pyhanko import stamp
 from pyhanko.pdf_utils import images, text
 from pyhanko.pdf_utils.incremental_writer import IncrementalPdfFileWriter
 from pyhanko.sign import signers, fields
+
+logger = logging.getLogger(__name__)
 
 class PDFCryptoSigner:
     """Сервис наложения визуального штампа и ЭЦП с использованием pyHanko.
@@ -27,9 +30,11 @@ class PDFCryptoSigner:
         cert_hash = hashlib.sha256(pkcs12_bytes).hexdigest()
 
         if cert_hash in self._signer_cache:
+            logger.info("PKCS#12 Signer loaded from cache.")
             return self._signer_cache[cert_hash]
 
         try:
+            logger.info("Parsing new PKCS#12 container...")
             signer = signers.SimpleSigner.load_pkcs12_data(
                 pkcs12_bytes,
                 other_certs=None,
@@ -37,9 +42,11 @@ class PDFCryptoSigner:
             )
 
             self._signer_cache[cert_hash] = signer
+            logger.info("PKCS#12 container parsed and cached successfully.")
             return signer
             
         except Exception as e:
+            logger.error(f"Failed to load PKCS#12 data: {e}")
             raise ValueError("Invalid PKCS#12 container or wrong password")
     
     async def apply_signature(
@@ -65,6 +72,7 @@ class PDFCryptoSigner:
         Returns:
             bytes: Подписанный PDF документ со встроенным визуальным штампом.
         """
+        logger.info("Starting cryptographic signature process...")
         try:
             signer = self._get_signer(pkcs12_bytes, password)
             pdf_stream = io.BytesIO(document_bytes)
@@ -102,9 +110,11 @@ class PDFCryptoSigner:
 
             await pdf_signer.async_sign_pdf(pdf_writer, in_place=True)
 
+            logger.info("PDF document successfully signed.")
             return pdf_stream.getvalue()
 
         except Exception as e:
+            logger.error(f"Signature process failed: {str(e)}")
             if not isinstance(e, ValueError):
                 raise ValueError(f'Failed to sign document: {str(e)}')
             raise e
