@@ -98,3 +98,9 @@ uvicorn src.main:app --host 0.0.0.0 --port 8000
 pip install -r requirements-dev.txt
 pytest tests/
 ```
+
+## Развертывание в Docker
+
+### Сборка образа
+```bash
+docker build -t ctf-storage-api .
