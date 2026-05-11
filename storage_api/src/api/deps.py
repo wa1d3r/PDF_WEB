@@ -1,8 +1,11 @@
+import logging
 from typing import Annotated
 from fastapi import Request, HTTPException, Depends
 from fastapi.security import APIKeyHeader
 from src.core.security import NetworkAccessControl
 from src.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 nac = NetworkAccessControl(
     master_secret=settings.MASTER_SECRET,
@@ -35,6 +38,7 @@ async def verify_service_access(
         str: Валидированный токен сервиса
     """
     if not x_service_token:
+        logger.warning(f"Access denied [IP: {client_ip}]: Missing X-Service-Token header.")
         raise HTTPException(
             status_code=401,
             detail='Unauthorized. Missing X-Service-Token header.'
