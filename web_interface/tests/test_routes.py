@@ -90,3 +90,13 @@ async def test_export_pdf_auth_error(client, mock_ctfd):
     
     assert response.status_code == 401
     assert response.json()["detail"] == "Invalid token"
+
+@pytest.mark.asyncio
+async def test_preview_report_server_error(client, mock_storage, mock_ctfd):
+    mock_ctfd.fetch_user_data.return_value = {"username": "Admin"}
+    mock_storage.get_template.side_effect = Exception("Storage connection dropped")
+    
+    response = await client.post("/api/preview", json={"token": "valid_token"})
+    
+    assert response.status_code == 500
+    assert response.json()["detail"] == "Storage connection dropped"
