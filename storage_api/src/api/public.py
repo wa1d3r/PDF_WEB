@@ -1,7 +1,10 @@
+import logging
 from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Path
 from src.db.json_storage import get_storage
 from src.api.schemas import DataResponse
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix='/public',
@@ -36,6 +39,7 @@ async def get_public_asset(
     data = storage.get('public', {}).get(asset_name)
 
     if not data:
+        logger.warning(f"Public asset not found: {asset_name}")
         raise HTTPException(status_code=404, detail='asset not found')
     
     return DataResponse(data=data)

@@ -1,8 +1,11 @@
+import logging
 from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Path
 from src.db.json_storage import get_storage
 from src.api.deps import verify_service_access
 from src.api.schemas import DataResponse
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix='/internal',
@@ -26,6 +29,7 @@ async def get_secret(
     data = storage.get('internal', {}).get(secret_key)
 
     if not data:
+        logger.warning(f"Internal secret not found: {secret_key}")
         raise HTTPException(status_code=404, detail='secret not found')
     
     return DataResponse(data=data)
