@@ -173,16 +173,16 @@ async def test_payload_to_large(fetcher: SignatureAssetFetcher):
             await fetcher.fetch(url)
 
 @pytest.mark.asyncio
-async def test_invalid_json_format(fetcher: SignatureAssetFetcher):
+async def test_invalid_json_format_not_json(fetcher: SignatureAssetFetcher):
     url = 'http://storage/public/public-data'
 
     with aioresponses() as m:
-        m.get(url, status=200, payload='invalid')
+        m.get(url, status=200, body='invalid') 
         with pytest.raises(InvalidPayloadError, match='Expected JSON'):
             await fetcher.fetch(url)
 
 @pytest.mark.asyncio
-async def test_invalid_json_format(fetcher: SignatureAssetFetcher):
+async def test_invalid_json_format_missing_data(fetcher: SignatureAssetFetcher):
     url = 'http://storage/public/public-data'
 
     with aioresponses() as m:
@@ -191,7 +191,7 @@ async def test_invalid_json_format(fetcher: SignatureAssetFetcher):
             await fetcher.fetch(url)
 
 @pytest.mark.asyncio
-async def test_invalid_json_format(fetcher: SignatureAssetFetcher):
+async def test_invalid_json_format_bad_base64(fetcher: SignatureAssetFetcher):
     url = 'http://storage/public/public-data'
 
     with aioresponses() as m:
@@ -213,6 +213,6 @@ async def test_http_status_error(fetcher: SignatureAssetFetcher):
     url = 'http://storage/public/public-data'
 
     with aioresponses() as m:
-        m.get(url, exception=ClientError())
-        with pytest.raises(NetworkError):
+        m.get(url, status=500) 
+        with pytest.raises(NetworkError, match='HTTP Request failed'):
             await fetcher.fetch(url)
