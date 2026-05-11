@@ -1,17 +1,10 @@
-from base64 import b64encode
-from pydantic import BaseModel, Field, field_serializer
+from pydantic import BaseModel, Field
 
 class DataResponse(BaseModel):
     """Схема ответа"""
 
-    data: bytes = Field(
+    data: str = Field(
         ...,
         title='Данные файла',
-        description=(
-            'Сериализованные бинарные данные файла'
-        )
+        description='Base64 кодированные бинарные данные файла'
     )
-
-    @field_serializer('data')
-    def bytes_to_base64(self, data: bytes, _info) -> str:
-        return b64encode(data).decode('utf-8')
