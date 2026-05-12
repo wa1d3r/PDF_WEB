@@ -1,0 +1,111 @@
+version: '3.8'
+
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  storage:
+    build: ./storage_api
+    container_name: ctf_storage
+    restart: unless-stopped
+    networks:
+      ctf_internal:
+        ipv4_address: 172.20.0.2
+    environment:
+      - MASTER_SECRET=OX3bnek1h9SGoSId2m7nix3N
+      - ALLOWED_DOMAINS=signer
+    volumes:
+      - ./data.json:/app/data.json:ro 
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+
+  pdf_gen:
+    build: ./pdf_gen
+    container_name: ctf_pdf_gen
+    restart: unless-stopped
+    networks:
+      ctf_internal:
+        ipv4_address: 172.20.0.3
+    environment:
+      - STORAGE_API_URL=http://storage:8000
+      - SIGNER_API_URL=http://signer:8000
+      - STAMP_TEXT=stamp_text
+      - STAMP_IMG=stamp_img
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+
+  signer:
+    build: ./signer
+    container_name: ctf_signer
+    restart: unless-stopped
+    networks:
+      ctf_internal:
+        ipv4_address: 172.20.0.4
+    environment:
+      - SIGNER_TOKEN=signer.7eff38ecf39c52966569a6c661eb46c8ba9cb169e659097770a0a1bddf2fed35
+      - PRIVATE_KEY_URL=http://storage:8000/internal/secrets/private_key
+      - PRIVATE_KEY_PASSWORD=I5rAoK6AxoMTsH7exNdnKaw
+      - MAX_DOCUMENT_SIZE=5242880
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+
+  web_interface:
+    build: ./web_interface
+    container_name: ctf_web_interface
+    restart: unless-stopped
+    ports:
+      - "60000:8000" 
+    networks:
+      ctf_internal:
+        ipv4_address: 172.20.0.5
+      ctf_external:
+        ipv4_address: 172.21.0.5
+    extra_hosts:
+      - "ctfd.host:host-gateway" 
+    environment:
+      - STORAGE_API_URL=http://storage:8000
+      - PDF_GEN_API_URL=http://pdf_gen:8000
+      - CTFD_API_URL=http://ctfd.host:50000
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+
+networks:
+  ctf_internal:
+    internal: true
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
+  ctf_external:
+    internal: false
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/24
