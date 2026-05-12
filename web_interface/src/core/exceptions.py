@@ -1,0 +1,9 @@
+class ClientError(Exception):
+    ...
+
+class NetworkError(ClientError):
+    ...
+
+class ServiceError(ClientError):
+    ...
+    
