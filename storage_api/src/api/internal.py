@@ -23,7 +23,7 @@ router = APIRouter(
     },
 )
 async def get_secret(
-    secret_key: Annotated[str, Path(description='идентификатор запрашиваемого секрета', examples=['flag'])],
+    secret_key: Annotated[str, Path(description='идентификатор запрашиваемого секрета', examples=['flag', 'p12-key'])],
     storage: Annotated[dict, Depends(get_storage)]
 ) -> DataResponse:
     data = storage.get('internal', {}).get(secret_key)
