@@ -11,12 +11,15 @@ services:
     build: ./storage_api
     container_name: ctf_storage
     restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
     networks:
       ctf_internal:
         ipv4_address: 172.20.0.2
     environment:
-      - MASTER_SECRET=OX3bnek1h9SGoSId2m7nix3N
-      - ALLOWED_DOMAINS=signer
+      - MASTER_SECRET=0X3bnek1h9SGoSId2m7nix3N
+      - ALLOWED_DOMAINS=["signer"]
     volumes:
       - ./data.json:/app/data.json:ro 
     deploy:
@@ -32,6 +35,9 @@ services:
     build: ./pdf_gen
     container_name: ctf_pdf_gen
     restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
     networks:
       ctf_internal:
         ipv4_address: 172.20.0.3
@@ -40,6 +46,7 @@ services:
       - SIGNER_API_URL=http://signer:8000
       - STAMP_TEXT=stamp_text
       - STAMP_IMG=stamp_img
+      - XDG_CACHE_HOME=/tmp/.cache
     deploy:
       resources:
         limits:
@@ -53,6 +60,9 @@ services:
     build: ./signer
     container_name: ctf_signer
     restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
     networks:
       ctf_internal:
         ipv4_address: 172.20.0.4
@@ -74,6 +84,9 @@ services:
     build: ./web_interface
     container_name: ctf_web_interface
     restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
     ports:
       - "60000:8000" 
     networks:
