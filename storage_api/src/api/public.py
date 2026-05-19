@@ -17,7 +17,7 @@ router = APIRouter(
     description='Возвращает содержимое ассета с публичным доступом',
     response_model=DataResponse,
     responses={
-        404: {'description': 'Ассет не найден в базе данных'}
+        404: {'description': 'Ассет не найден'}
     }
 )
 async def get_public_asset(
