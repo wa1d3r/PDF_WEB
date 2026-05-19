@@ -6,10 +6,16 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
+RUN groupadd -r ctfgroup && useradd -r -g ctfgroup -s /bin/false ctfuser
+
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY src/ ./src/
+
+RUN chown -R ctfuser:ctfgroup /app
+
+USER ctfuser
 
 EXPOSE 8000
 
