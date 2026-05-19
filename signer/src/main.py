@@ -1,6 +1,9 @@
+import aiohttp
 import time
 import logging
 from fastapi import FastAPI, Request
+from contextlib import asynccontextmanager
+
 from src.api import sign
 from src.core.config import settings
 from src.core.logger import setup_logging
@@ -8,7 +11,13 @@ from src.core.logger import setup_logging
 setup_logging()
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title=settings.PROJECT_NAME)
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    app.state.http_session = aiohttp.ClientSession()
+    yield
+    await app.state.http_session.close()
+
+app = FastAPI(title=settings.PROJECT_NAME, lifespan=lifespan)
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
