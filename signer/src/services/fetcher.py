@@ -21,9 +21,10 @@ class SignatureAssetFetcher:
 
     _INTERNAL_REGEX = re.compile(r'(?:^|/)internal(?:/|$)', re.IGNORECASE)
 
-    def __init__(self):
-        """Инициализация заголовками для внутренних запросов
+    def __init__(self, session: aiohttp.ClientSession):
+        """Инициализация сессии и заголовков для внутренних запросов
         """
+        self._session = session
         self._secret_headers = { 'X-Service-Token': settings.SIGNER_TOKEN }
         self._max_doc_size = settings.MAX_DOCUMENT_SIZE
     
@@ -46,22 +47,21 @@ class SignatureAssetFetcher:
         logger.info(f"Fetching asset from URL: {url}")
 
         try:
-            async with aiohttp.ClientSession(headers=self._secret_headers) as session:
-                async with session.get(url, timeout=5) as response:
-                    response.raise_for_status()
-                    
-                    try:
-                        resp_json = await response.json()
-                    except Exception:
-                        logger.error(f"Fetch failed for {url}: Expected JSON response.")
-                        raise InvalidPayloadError("Invalid response format: Expected JSON")
+            async with self._session.get(url, headers=self._secret_headers, timeout=5) as response:
+                response.raise_for_status()
+                
+                try:
+                    resp_json = await response.json()
+                except Exception:
+                    logger.error(f"Fetch failed for {url}: Expected JSON response.")
+                    raise InvalidPayloadError("Invalid response format: Expected JSON")
 
-                    asset_bytes = self._decode_payload(resp_json)
-                    self._check_size_limits(asset_bytes)
-                    
-                    logger.info(f"Successfully fetched and decoded {len(asset_bytes)} bytes from {url}")
-                    return asset_bytes
-                    
+                asset_bytes = self._decode_payload(resp_json)
+                self._check_size_limits(asset_bytes)
+                
+                logger.info(f"Successfully fetched and decoded {len(asset_bytes)} bytes from {url}")
+                return asset_bytes
+                
         except aiohttp.ClientError as e:
             logger.error(f"Network error while fetching {url}: {e}")
             raise NetworkError(f"HTTP Request failed: {str(e)}")
