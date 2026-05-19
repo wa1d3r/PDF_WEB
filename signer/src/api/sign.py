@@ -1,7 +1,7 @@
 import base64
 import logging
 from typing import Annotated
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from src.core.config import settings
 from src.api.schemas import SignRequest, SignResponse
 from src.services.fetcher import SignatureAssetFetcher
@@ -17,6 +17,9 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix='/api/v1', tags=['Signature API'])
 
+async def get_fetcher(request: Request) -> SignatureAssetFetcher:
+    return SignatureAssetFetcher(session=request.app.state.http_session)
+
 @router.post(
     '/sign',
     response_model=SignResponse,
@@ -25,9 +28,9 @@ router = APIRouter(prefix='/api/v1', tags=['Signature API'])
 )
 async def sign_document(
     payload: SignRequest,
-    fetcher: Annotated[SignatureAssetFetcher, Depends()],
+    fetcher: Annotated[SignatureAssetFetcher, Depends(get_fetcher)],    
     crypto: Annotated[PDFCryptoSigner, Depends()]
-) -> SignRequest:
+) -> SignResponse:
     logger.info("Received request to sign a new PDF document.")
     try:
         text_bytes = await fetcher.fetch(str(payload.text_url))
