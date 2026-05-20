@@ -33,7 +33,7 @@ class PDFGeneratorClient:
 
                 if response.status_code != 200:
                     error_detail = response.json().get('detail', 'runtime error')
-                    logger.warning(f"PDF Gen returned error (Possible SSTI execution): {error_detail}")
+                    logger.warning(f"PDF Gen returned error: {error_detail}")
                     raise ServiceError(error_detail)
                 
                 b64_data = response.json().get('pdf_base64', '')
