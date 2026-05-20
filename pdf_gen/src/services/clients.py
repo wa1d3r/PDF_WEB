@@ -60,7 +60,7 @@ class SignerClient:
         payload = {
             "document_base64": pdf_base64,
             "text_url": f"{settings.STORAGE_API_URL}/public/assets/{settings.STAMP_TEXT}",
-            "image_url": f"{settings.STORAGE_API_URL}/public/assets/{settings.STAMP_IMG}"
+            "img_url": f"{settings.STORAGE_API_URL}/public/assets/{settings.STAMP_IMG}"
         }
         
         try:
