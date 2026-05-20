@@ -13,10 +13,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     zlib1g \
     && rm -rf /var/lib/apt/lists/*
 
+RUN groupadd -r ctfgroup && useradd -r -g ctfgroup -s /bin/false ctfuser
+
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY src/ ./src/
+
+RUN chown -R ctfuser:ctfgroup /app
+
+USER ctfuser
 
 EXPOSE 8000
 

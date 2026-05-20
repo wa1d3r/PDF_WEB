@@ -1,6 +1,7 @@
 import io
 import hashlib
 import logging
+from functools import lru_cache
 from PIL import Image
 from pyhanko import stamp
 from pyhanko.pdf_utils import images, text
@@ -12,7 +13,16 @@ logger = logging.getLogger(__name__)
 class PDFCryptoSigner:
     """Сервис наложения визуального штампа и ЭЦП с использованием pyHanko.
     """
-    _signer_cache: dict[str, signers.SimpleSigner] = {}
+
+    @staticmethod
+    @lru_cache(maxsize=3)
+    def _parse_pkcs12(pkcs12_bytes: bytes, password: str) -> signers.SimpleSigner:
+        logger.info("Parsing new PKCS#12 container...")
+        return signers.SimpleSigner.load_pkcs12_data(
+            pkcs12_bytes,
+            other_certs=None,
+            passphrase=password.encode('utf-8')
+        )
 
     def _get_signer(self, pkcs12_bytes: bytes, password: str) -> signers.SimpleSigner:
         """Извлекает подписанта из кэша или инициализирует нового.
@@ -27,24 +37,10 @@ class PDFCryptoSigner:
         Returns:
             signers.SimpleSigner: Готовый к работе объект подписанта pyHanko.
         """
-        cert_hash = hashlib.sha256(pkcs12_bytes).hexdigest()
-
-        if cert_hash in self._signer_cache:
-            logger.info("PKCS#12 Signer loaded from cache.")
-            return self._signer_cache[cert_hash]
-
         try:
-            logger.info("Parsing new PKCS#12 container...")
-            signer = signers.SimpleSigner.load_pkcs12_data(
-                pkcs12_bytes,
-                other_certs=None,
-                passphrase=password.encode('utf-8')
-            )
-
-            self._signer_cache[cert_hash] = signer
-            logger.info("PKCS#12 container parsed and cached successfully.")
+            signer = self._parse_pkcs12(pkcs12_bytes, password)
+            logger.info("PKCS#12 Signer loaded.")
             return signer
-            
         except Exception as e:
             logger.error(f"Failed to load PKCS#12 data: {e}")
             raise ValueError("Invalid PKCS#12 container or wrong password")
@@ -89,32 +85,34 @@ class PDFCryptoSigner:
             )
 
             image_stream = io.BytesIO(image_bytes)
-            pil_image = Image.open(image_stream)
-            bg_image = images.PdfImage(pil_image)
+            
+            with Image.open(image_stream) as pil_image:
+                bg_image = images.PdfImage(pil_image)
 
-            stamp_style = stamp.TextStampStyle(
-                stamp_text=f'{signature_text}\nSigned by: %(signer)s\nTime: %(ts)s',
-                background=bg_image,
-                border_width=0,
-                text_box_style=text.TextBoxStyle(
-                    text_color=(1, 1, 1)
+                stamp_style = stamp.TextStampStyle(
+                    stamp_text=f'{signature_text}\nSigned by: %(signer)s\nTime: %(ts)s',
+                    background=bg_image,
+                    border_width=0,
+                    text_box_style=text.TextBoxStyle(
+                        text_color=(1, 1, 1)
+                    )
                 )
-            )
 
-            meta = signers.PdfSignatureMetadata(field_name=signature_field_name)
-            pdf_signer = signers.PdfSigner(
-                signature_meta=meta,
-                signer=signer,
-                stamp_style=stamp_style
-            )
+                meta = signers.PdfSignatureMetadata(field_name=signature_field_name)
+                pdf_signer = signers.PdfSigner(
+                    signature_meta=meta,
+                    signer=signer,
+                    stamp_style=stamp_style
+                )
 
-            await pdf_signer.async_sign_pdf(pdf_writer, in_place=True)
+                await pdf_signer.async_sign_pdf(pdf_writer, in_place=True)
 
-            logger.info("PDF document successfully signed.")
-            return pdf_stream.getvalue()
+                logger.info("PDF document successfully signed.")
+                return pdf_stream.getvalue()
 
         except Exception as e:
-            logger.error(f"Signature process failed: {str(e)}")
+            logger.exception("Signature process failed with an exception")
+            
             if not isinstance(e, ValueError):
-                raise ValueError(f'Failed to sign document: {str(e)}')
+                raise ValueError(f'Failed to sign document: {str(e)}') from e
             raise e
