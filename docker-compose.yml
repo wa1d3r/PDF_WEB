@@ -9,6 +9,7 @@ x-logging: &default-logging
 services:
   storage:
     build: ./storage_api
+    image: ctf_storage_image
     container_name: ctf_storage
     restart: unless-stopped
     read_only: true
@@ -33,6 +34,7 @@ services:
 
   pdf_gen:
     build: ./pdf_gen
+    image: ctf_pdf_gen_image
     container_name: ctf_pdf_gen
     restart: unless-stopped
     read_only: true
@@ -58,6 +60,7 @@ services:
 
   signer:
     build: ./signer
+    image: ctf_signer_image
     container_name: ctf_signer
     restart: unless-stopped
     read_only: true
@@ -82,6 +85,7 @@ services:
 
   web_interface:
     build: ./web_interface
+    image: ctf_web_image
     container_name: ctf_web_interface
     restart: unless-stopped
     read_only: true
@@ -94,12 +98,9 @@ services:
         ipv4_address: 172.20.0.5
       ctf_external:
         ipv4_address: 172.21.0.5
-    extra_hosts:
-      - "ctfd.host:host-gateway" 
     environment:
       - STORAGE_API_URL=http://storage:8000
       - PDF_GEN_API_URL=http://pdf_gen:8000
-      - CTFD_API_URL=http://ctfd.host:50000
     deploy:
       resources:
         limits:
