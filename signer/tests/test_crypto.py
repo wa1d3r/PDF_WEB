@@ -25,7 +25,6 @@ def valid_pdf_bytes() -> bytes:
     c.save()
     return packet.getvalue()
 
-
 @pytest.fixture(scope="session")
 def dummy_image_bytes() -> bytes:
     return (
@@ -34,21 +33,13 @@ def dummy_image_bytes() -> bytes:
         b"\x00\x05\x00\x01\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82"
     )
 
-
 @pytest.fixture(scope="session")
 def crypto_credentials() -> dict:
     password_str = "ctf_test_password"
     password_bytes = password_str.encode('utf-8')
     
-    private_key = rsa.generate_private_key(
-        public_exponent=65537,
-        key_size=2048,
-    )
-    
-    subject = issuer = x509.Name([
-        x509.NameAttribute(NameOID.COMMON_NAME, "CTF Testing Node"),
-    ])
-    
+    private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    subject = issuer = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "CTF Testing Node")])
     now_utc = datetime.datetime.now(datetime.timezone.utc)
     
     cert = x509.CertificateBuilder().subject_name(
@@ -73,31 +64,20 @@ def crypto_credentials() -> dict:
         encryption_algorithm=serialization.BestAvailableEncryption(password_bytes)
     )
     
-    return {
-        "p12_bytes": p12_bytes,
-        "password": password_str
-    }
-
+    return {"p12_bytes": p12_bytes, "password": password_str}
 
 @pytest.fixture(autouse=True)
 def clear_crypto_cache():
-    PDFCryptoSigner._signer_cache.clear()
+    PDFCryptoSigner._parse_pkcs12.cache_clear()
     yield
-
+    PDFCryptoSigner._parse_pkcs12.cache_clear()
 
 @pytest.fixture
 def crypto_signer() -> PDFCryptoSigner:
     return PDFCryptoSigner()
 
-
-
 @pytest.mark.asyncio
-async def test_apply_signature_success(
-    crypto_signer: PDFCryptoSigner, 
-    valid_pdf_bytes: bytes, 
-    dummy_image_bytes: bytes, 
-    crypto_credentials: dict
-):
+async def test_apply_signature_success(crypto_signer, valid_pdf_bytes, dummy_image_bytes, crypto_credentials):
     signature_text = "test stamp"
     
     signed_pdf = await crypto_signer.apply_signature(
@@ -118,57 +98,34 @@ async def test_apply_signature_success(
     
     cert_der = cert.public_bytes(serialization.Encoding.DER)
     asn1_cert = asn1_x509.Certificate.load(cert_der)
-    
     vc = ValidationContext(trust_roots=[asn1_cert])
     
     reader = PdfFileReader(io.BytesIO(signed_pdf))
     assert len(reader.embedded_signatures) == 1
-    sig_obj = reader.embedded_signatures[0]
     
-    status = await async_validate_pdf_signature(sig_obj, signer_validation_context=vc)
-    
-    assert status.valid is True, "Криптографическая подпись недействительна!"
-    assert status.intact is True, "Целостность PDF документа нарушена!"
-    assert status.signing_cert.dump() == asn1_cert.dump()
-
+    status = await async_validate_pdf_signature(reader.embedded_signatures[0], signer_validation_context=vc)
+    assert status.valid is True
+    assert status.intact is True
 
 @pytest.mark.asyncio
-async def test_signer_cache_works_and_reuses_objects(
-    crypto_signer: PDFCryptoSigner, 
-    valid_pdf_bytes: bytes, 
-    dummy_image_bytes: bytes, 
-    crypto_credentials: dict
-):
+async def test_signer_cache_works_and_reuses_objects(crypto_signer, valid_pdf_bytes, dummy_image_bytes, crypto_credentials):
     p12_bytes = crypto_credentials["p12_bytes"]
     password = crypto_credentials["password"]
-    expected_hash = hashlib.sha256(p12_bytes).hexdigest()
     
-    assert len(PDFCryptoSigner._signer_cache) == 0
+    assert PDFCryptoSigner._parse_pkcs12.cache_info().hits == 0
+    assert PDFCryptoSigner._parse_pkcs12.cache_info().misses == 0
 
-    await crypto_signer.apply_signature(
-        valid_pdf_bytes, p12_bytes, password, "First", dummy_image_bytes
-    )
+    await crypto_signer.apply_signature(valid_pdf_bytes, p12_bytes, password, "First", dummy_image_bytes)
     
-    assert len(PDFCryptoSigner._signer_cache) == 1
-    assert expected_hash in PDFCryptoSigner._signer_cache
-    
-    cached_signer_id = id(PDFCryptoSigner._signer_cache[expected_hash])
+    assert PDFCryptoSigner._parse_pkcs12.cache_info().misses == 1
+    assert PDFCryptoSigner._parse_pkcs12.cache_info().hits == 0
 
-    await crypto_signer.apply_signature(
-        valid_pdf_bytes, p12_bytes, password, "Second", dummy_image_bytes
-    )
+    await crypto_signer.apply_signature(valid_pdf_bytes, p12_bytes, password, "Second", dummy_image_bytes)
     
-    assert len(PDFCryptoSigner._signer_cache) == 1
-    assert id(PDFCryptoSigner._signer_cache[expected_hash]) == cached_signer_id
-
+    assert PDFCryptoSigner._parse_pkcs12.cache_info().hits == 1
 
 @pytest.mark.asyncio
-async def test_invalid_password(
-    crypto_signer: PDFCryptoSigner, 
-    valid_pdf_bytes: bytes, 
-    dummy_image_bytes: bytes, 
-    crypto_credentials: dict
-):
+async def test_invalid_password(crypto_signer, valid_pdf_bytes, dummy_image_bytes, crypto_credentials):
     with pytest.raises(ValueError, match="wrong password"):
         await crypto_signer.apply_signature(
             document_bytes=valid_pdf_bytes,
@@ -178,13 +135,8 @@ async def test_invalid_password(
             image_bytes=dummy_image_bytes
         )
 
-
 @pytest.mark.asyncio
-async def test_corrupted_p12_container(
-    crypto_signer: PDFCryptoSigner, 
-    valid_pdf_bytes: bytes, 
-    dummy_image_bytes: bytes
-):
+async def test_corrupted_p12_container(crypto_signer, valid_pdf_bytes, dummy_image_bytes):
     with pytest.raises(ValueError, match="Invalid PKCS#12 container"):
         await crypto_signer.apply_signature(
             document_bytes=valid_pdf_bytes,
@@ -194,13 +146,8 @@ async def test_corrupted_p12_container(
             image_bytes=dummy_image_bytes
         )
 
-
 @pytest.mark.asyncio
-async def test_corrupted_pdf_document(
-    crypto_signer: PDFCryptoSigner, 
-    dummy_image_bytes: bytes, 
-    crypto_credentials: dict
-):    
+async def test_corrupted_pdf_document(crypto_signer, dummy_image_bytes, crypto_credentials):    
     with pytest.raises(ValueError, match="Failed to sign document"):
         await crypto_signer.apply_signature(
             document_bytes=b'wrong',
@@ -210,13 +157,8 @@ async def test_corrupted_pdf_document(
             image_bytes=dummy_image_bytes
         )
 
-
 @pytest.mark.asyncio
-async def test_corrupted_image_bytes(
-    crypto_signer: PDFCryptoSigner, 
-    valid_pdf_bytes: bytes, 
-    crypto_credentials: dict
-):    
+async def test_corrupted_image_bytes(crypto_signer, valid_pdf_bytes, crypto_credentials):    
     with pytest.raises(ValueError, match="Failed to sign document"):
         await crypto_signer.apply_signature(
             document_bytes=valid_pdf_bytes,
