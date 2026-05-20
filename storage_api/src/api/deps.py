@@ -37,19 +37,15 @@ async def verify_service_access(
     Returns:
         str: Валидированный токен сервиса
     """
+    client_ip = request.client.host if request.client else "unknown"
+    
     if not x_service_token:
         logger.warning(f"Access denied [IP: {client_ip}]: Missing X-Service-Token header.")
-        raise HTTPException(
-            status_code=401,
-            detail='Unauthorized. Missing X-Service-Token header.'
-        )
-
-    client_ip = request.client.host if request.client else 'unknown'
-
-    if not nac.verify_access(x_service_token, client_ip):
-        raise HTTPException(
-            status_code=401,
-            detail='Unauthorized. Invalid token.'
-        )
-
+        raise HTTPException(status_code=401, detail="Missing X-Service-Token")
+    
+    is_valid = await nac.verify_access(x_service_token, client_ip)
+    
+    if not is_valid:
+        raise HTTPException(status_code=401, detail="Invalid or unauthorized token")
+        
     return x_service_token
